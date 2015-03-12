@@ -19,7 +19,7 @@ import os
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
-from clipupimg import HOTKEY
+from clipupimg import HOTKEY, PROMPT
 from clipupimg import ClipupImageQiniu
 from clipupimg import _cur_path
 
@@ -49,6 +49,7 @@ class ImageViewer(QtGui.QFrame):
         self.setWindowTitle('Clipboard Viewer')
         self.setWindowIcon(QtGui.QIcon('icon.ico'))
         self.setAttribute(QtCore.Qt.WA_QuitOnClose, False)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         # layout
         layout = QtGui.QGridLayout()
@@ -127,7 +128,15 @@ class TrayWidget(QtGui.QSystemTrayIcon):
 
     def on_double_clicked(self, reason):
         if reason == self.DoubleClick:
-            clipper.clipup()
+            if PROMPT == 'false':
+                clipper.clipup()
+            # FIXME crash?
+            elif PROMPT == 'true':
+                filename, ok = QtGui.QInputDialog.getText(None, 'File Name', 'Enter file name:')
+                if ok and filename:
+                    clipper.clipup(filename)
+            else:
+                clipper.clipup()
 
     def on_finished(self, url, path):
         image_viewer.image_path = path
@@ -156,5 +165,5 @@ exception_handler = QtExceptionHandler()
 sys.excepthook = exception_handler.handle
 
 if __name__ == '__main__':
-    app.exec_()
+    sys.exit(app.exec_())
 

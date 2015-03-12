@@ -38,6 +38,7 @@ SECRET_KEY = config.get('config', 'secret_key')
 BUCKET = config.get('config', 'bucket')
 FORMAT = config.get('config', 'format') or '{}'
 HOTKEY = config.get('config', 'hotkey')
+PROMPT = config.get('config', 'prompt')
 
 
 class ContentNotFitException(Exception):
@@ -73,7 +74,7 @@ class ClipupImageQiniu(QtCore.QObject):
 
 
     @staticmethod
-    def upload_to_qiniu(path, qiniu):
+    def upload_to_qiniu(path, qiniu, key):
         """
         upload file to qiniu
         :param path: file path
@@ -81,7 +82,7 @@ class ClipupImageQiniu(QtCore.QObject):
         :return: URL if upload succeed, error info if failed
         """
         bucket_name = BUCKET
-        key = os.path.basename(path)
+        key = key + '.jpg' or os.path.basename(path)
         params = {}
         mime_type = 'image/jpeg'
 
@@ -93,10 +94,10 @@ class ClipupImageQiniu(QtCore.QObject):
             return(info)
 
 
-    def clipup(self):
+    def clipup(self, key=None):
         temp_path = self.save_clip_to_file()
         q = self.qiniu_init(ACCESS_KEY, SECRET_KEY)
-        url = t_url = self.upload_to_qiniu(temp_path, q)
+        url = t_url = self.upload_to_qiniu(temp_path, q, key)
         url = FORMAT.format(url)
 
         self.clipboard.setText(str(url))

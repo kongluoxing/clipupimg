@@ -9,4 +9,5 @@ hotkey=Ctrl+Alt+Shift+U
 # visible at start
 visible=false
 # prompt for name every time
+# 设置为true会导致崩溃
 prompt=false
