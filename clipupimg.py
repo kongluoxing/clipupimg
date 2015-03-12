@@ -16,19 +16,21 @@
 
 import tempfile
 import os
+import sys
 from ConfigParser import ConfigParser
 
-from PIL import ImageGrab
-import win32clipboard as wclip
 from PyQt4 import QtCore
+from PyQt4 import QtGui
+
 from qiniu import Auth
 from qiniu import put_file
 
+app = QtGui.QApplication(sys.argv)
 
-__cur_path = os.path.abspath(os.path.dirname(__file__))
+_cur_path = os.path.abspath(os.path.dirname(__file__))
 
 config = ConfigParser()
-config.read(__cur_path + os.sep + 'config.conf')
+config.read(_cur_path + os.sep + 'config.conf')
 
 
 ACCESS_KEY = config.get('config', 'access_key')
@@ -45,7 +47,8 @@ class ContentNotFitException(Exception):
 class ClipupImageQiniu(QtCore.QObject):
 
     # must define here, cannot be in any method
-    finished = QtCore.pyqtSignal(str)
+    finished = QtCore.pyqtSignal(str, str)
+    clipboard = QtGui.QApplication.clipboard()
 
     def save_clip_to_file(self):
         """
@@ -53,13 +56,11 @@ class ClipupImageQiniu(QtCore.QObject):
 
         :return: @str temp file path
         """
-        image = ImageGrab.grabclipboard()
 
-        if image:
+        image = self.clipboard.image()
+        if not image.isNull():
             fd, path = tempfile.mkstemp(suffix='.jpg')
-            f = open(path, 'wb')
             image.save(path, 'JPEG')
-            f.close()
             return path
         else:
             raise ContentNotFitException('Clipboard content is not an image.')
@@ -97,26 +98,9 @@ class ClipupImageQiniu(QtCore.QObject):
         q = self.qiniu_init(ACCESS_KEY, SECRET_KEY)
         url = t_url = self.upload_to_qiniu(temp_path, q)
         url = FORMAT.format(url)
-        wclip.OpenClipboard()
-        wclip.SetClipboardText(str(url), wclip.CF_TEXT)
-        wclip.CloseClipboard()
 
-        self.finished.emit(t_url)
+        self.clipboard.setText(str(url))
+        self.finished.emit(t_url, temp_path)
+
         print('Upload finished: ' + t_url)
         return url
-
-
-# if __name__ == '__main__':
-
-    # icon = 'icon.ico'
-    # hover_text = "Clipboard image upload assist"
-    #
-    # menu_options = (('Upload', None, clipup),)
-    #
-    # def bye(sysTrayIcon): pass
-    #
-    # SysTrayIcon(icon, hover_text, menu_options, on_quit=bye, default_menu_index=1)
-
-    # from gui import main
-    # main(clipup)
-

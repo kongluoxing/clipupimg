@@ -15,67 +15,90 @@
 # limitations under the License.
 
 import sys
+import os
 from PyQt4 import QtGui
 from PyQt4 import QtCore
-from PIL import ImageGrab
 
-from clipupimg import ClipupImageQiniu
 from clipupimg import HOTKEY
+from clipupimg import ClipupImageQiniu
+from clipupimg import _cur_path
 
 app = QtGui.QApplication(sys.argv)
-cliper = ClipupImageQiniu()
+clipper = ClipupImageQiniu()
 
 
-class ImageWidget(QtGui.QMainWindow):
+class ImageViewer(QtGui.QFrame):
     def __init__(self):
-        super(ImageWidget, self).__init__()
-        self.layout = QtGui.QLayout()
-        self.gv = QtGui.QGraphicsView()
+        """
+        show uploaded image
+
+        """
+        super(ImageViewer, self).__init__()
+        self.clipboard = QtGui.QApplication.clipboard()
+        self.image_path = None
 
         self.initUI()
 
     def initUI(self):
-        self.setGeometry(300, 300, 250, 150)
+        # centerize
+        screen = QtGui.QDesktopWidget().screenGeometry()
+        self.resize(300, 200)
+        size = self.geometry()
+        self.move((screen.width()-size.width())/2, (screen.height()-size.height())/2)
+
         self.setWindowTitle('Clipboard Viewer')
         self.setWindowIcon(QtGui.QIcon('icon.ico'))
         self.setAttribute(QtCore.Qt.WA_QuitOnClose, False)
 
-    def grab_from_clipboard(self):
-        image = QtGui.QImage(ImageGrab.grabclipboard())
-        self.layout.addWidget(self.gv)
+        # layout
+        layout = QtGui.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
 
+        # show image
+        self.label = QtGui.QLabel()
+        self.label.setFrameStyle(QtGui.QFrame.Panel)
+        self.label.setAutoFillBackground(True)
+        self.label.setBackgroundRole(QtGui.QPalette.ToolTipBase)
+        self.setLayout(layout)
+
+        self.label = QtGui.QLabel()
+        layout.addWidget(self.label)
 
     def show_content(self):
-        self.grab_from_clipboard()
-        self.setVisible(True)
+        if self.image_path:
+            image = QtGui.QImage(self.image_path)
+            pixmap = QtGui.QPixmap(image)
+            self.label.setPixmap(pixmap)
+            self.setVisible(True)
 
-iw = ImageWidget()
+image_viewer = ImageViewer()
 
 
 class TrayWidget(QtGui.QSystemTrayIcon):
     def __init__(self):
+        """
+        tray icon and menus
+
+        """
         super(TrayWidget, self).__init__()
 
-        self.clipboard = QtGui.QApplication.clipboard(app)
+        self.clipboard = QtGui.QApplication.clipboard()
 
         # menu
         self.quit_action = QtGui.QAction('&Quit', None)
         self.quit_action.triggered.connect(sys.exit)
         self.upload_action = QtGui.QAction('&Upload', None)
-        self.upload_action.triggered.connect(cliper.clipup)
+        self.upload_action.triggered.connect(clipper.clipup)
         self.show_action = QtGui.QAction('&Show', None)
         self.show_action.triggered.connect(self.on_show_action)
-        self.test_action = QtGui.QAction('&Test', None)
-        self.test_action.triggered.connect(self.on_test_action)
 
         tray_icon_menu = QtGui.QMenu()
         tray_icon_menu.addAction(self.upload_action)
         tray_icon_menu.addAction(self.show_action)
         tray_icon_menu.addAction(self.quit_action)
-        tray_icon_menu.addAction(self.test_action)
 
         # tray icon
-        icon = QtGui.QIcon('icon.ico')
+        icon = QtGui.QIcon(_cur_path + os.sep + 'icon.ico')
         self.setIcon(icon)
         self.setVisible(True)
         self.setContextMenu(tray_icon_menu)
@@ -83,9 +106,9 @@ class TrayWidget(QtGui.QSystemTrayIcon):
 
         # when finished, show a message
         # self.connect(self, QtCore.SIGNAL('finished'), self.show_finished)
-        cliper.finished.connect(self.show_finished)
+        clipper.finished.connect(self.on_finished)
 
-        # global hotkey
+        # hotkey
         hotkey = QtGui.QKeySequence(HOTKEY)
         self.upload_action.setShortcut(hotkey)
 
@@ -93,17 +116,25 @@ class TrayWidget(QtGui.QSystemTrayIcon):
         self.activated.connect(self.on_double_clicked)
 
     def on_test_action(self):
+        content = self.clipboard.text()
+        if not content:
+            content = self.clipboard.image()
 
+        label = QtGui.QLabel()
+        pixmap = QtGui.QPixmap(content)
+        label.setPixmap(pixmap)
+        label.show()
 
     def on_double_clicked(self, reason):
         if reason == self.DoubleClick:
-            cliper.clipup()
+            clipper.clipup()
 
-    def show_finished(self, url):
+    def on_finished(self, url, path):
+        image_viewer.image_path = path
         self.showMessage('Success', 'Upload finished: ' + url)
 
     def on_show_action(self):
-        iw.show_content()
+        image_viewer.show_content()
 
 
 tw = TrayWidget()
