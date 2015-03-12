@@ -1,0 +1,12 @@
+[config]
+access_key=
+secret_key=
+bucket=
+# {}表示要替换的内容
+format=![Alt text]({})
+# 目前不生效
+hotkey=Ctrl+Alt+Shift+U
+# visible at start
+visible=false
+# prompt for name every time
+prompt=false
